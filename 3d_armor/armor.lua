@@ -64,7 +64,7 @@ armor = {
 		.."listring[current_player;craft]",
 	textures = {},
 	default_skin = "character",
-	version = "0.4.5",
+	version = "0.4.7",
 }
 
 if minetest.get_modpath("inventory_plus") then
@@ -397,7 +397,7 @@ minetest.register_on_joinplayer(function(player)
 		allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
 			return count
 		end,
-	})
+	}, name)
 	if inv_mod == "inventory_plus" then
 		inventory_plus.register_button(player,"armor", "Armor")
 	end
@@ -498,16 +498,22 @@ if ARMOR_DROP == true or ARMOR_DESTROY == true then
 			minetest.after(ARMOR_BONES_DELAY, function()
 				local node = minetest.get_node(vector.round(pos))
 				if node then
-					if node.name == "bones:bones" then
-						local meta = minetest.get_meta(vector.round(pos))
-						local owner = meta:get_string("owner")
-						local inv = meta:get_inventory()
-						for _,stack in ipairs(drop) do
-							if name == owner and inv:room_for_item("main", stack) then
-								inv:add_item("main", stack)
-							else
-								armor.drop_armor(pos, stack)
-							end
+					if node.name ~= "bones:bones" then
+						pos.y = pos.y+1
+						node = minetest.get_node(vector.round(pos))
+						if node.name ~= "bones:bones" then
+							minetest.log("warning", "Failed to add armor to bones node.")
+							return
+						end
+					end
+					local meta = minetest.get_meta(vector.round(pos))
+					local owner = meta:get_string("owner")
+					local inv = meta:get_inventory()
+					for _,stack in ipairs(drop) do
+						if name == owner and inv:room_for_item("main", stack) then
+							inv:add_item("main", stack)
+						else
+							armor.drop_armor(pos, stack)
 						end
 					end
 				else
@@ -620,7 +626,18 @@ end)
 minetest.register_chatcommand("kill", {
 	params = "<name>",
 	description = "Kills player instantly",
+	privs = {ban=true},
 	func = function(name, param)
+		local player = minetest.get_player_by_name(param)
+		if player then
+			player:set_hp(0)
+		end
+	end,
+})
+
+minetest.register_chatcommand("killme", {
+	description = "Kill yourself instantly",
+	func = function(name)
 		local player = minetest.get_player_by_name(name)
 		if player then
 			player:set_hp(-1001)
